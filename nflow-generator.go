@@ -7,11 +7,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/jessevdk/go-flags"
 	"math/rand"
 	"net"
 	"os"
-	"time"
+
+	"github.com/jessevdk/go-flags"
 )
 
 type Proto int
@@ -35,9 +35,9 @@ var opts struct {
 	CollectorIP   string `short:"t" long:"target" description:"target ip address of the netflow collector"`
 	CollectorPort string `short:"p" long:"port" description:"port number of the target netflow collector"`
 	SpikeProto    string `short:"s" long:"spike" description:"run a second thread generating a spike for the specified protocol"`
-    FalseIndex    bool   `short:"f" long:"false-index" description:"generate false SNMP interface indexes, otherwise set to 0"`
-    FlowCount     int    `short:"c" long:"flow-count" description:"set the number of flows to generate in each iteration" default:"16" max:"128" min:"8"`
-    Help          bool   `short:"h" long:"help" description:"show nflow-generator help"`
+	FalseIndex    bool   `short:"f" long:"false-index" description:"generate false SNMP interface indexes, otherwise set to 0"`
+	FlowCount     int    `short:"c" long:"flow-count" description:"set the number of flows to generate in each iteration" default:"16" max:"128" min:"8"`
+	Help          bool   `short:"h" long:"help" description:"show nflow-generator help"`
 }
 
 func main() {
@@ -47,7 +47,7 @@ func main() {
 		showUsage()
 		os.Exit(1)
 	}
-	if opts.Help == true {
+	if opts.Help {
 		showUsage()
 		os.Exit(1)
 	}
@@ -66,36 +66,43 @@ func main() {
 	}
 	log.Infof("sending netflow data to a collector ip: %s and port: %s. \n"+
 		"Use ctrl^c to terminate the app.", opts.CollectorIP, opts.CollectorPort)
-
+	sent_flow := 0
+	i := 0
 	for {
-		rand.Seed(time.Now().Unix())
-		n := randomNum(50, 1000)
+		i += 1
+		if i%5000 == 0 {
+			log.Println(sent_flow)
+		}
+		// rand.Seed(time.Now().Unix())
+		// n := randomNum(50, 1000)
 		// add spike data
 		if opts.SpikeProto != "" {
 			GenerateSpike()
 		}
-		if n > 900 {
-			data := GenerateNetflow(8)
-			buffer := BuildNFlowPayload(data)
-			_, err := conn.Write(buffer.Bytes())
-			if err != nil {
-				log.Fatal("Error connecting to the target collector: ", err)
-			}
-		} else {
-			data := GenerateNetflow(opts.FlowCount)
-			buffer := BuildNFlowPayload(data)
-			_, err := conn.Write(buffer.Bytes())
-			if err != nil {
-				log.Fatal("Error connecting to the target collector: ", err)
-			}
+		// if n > 900 {
+		// 	data := GenerateNetflow(8)
+		// 	buffer := BuildNFlowPayload(data)
+		// 	_, err := conn.Write(buffer.Bytes())
+		// 	if err != nil {
+		// 		log.Fatal("Error connecting to the target collector: ", err)
+		// 	}
+		// } else {
+		data := GenerateNetflow(opts.FlowCount)
+		buffer := BuildNFlowPayload(data)
+		_, err := conn.Write(buffer.Bytes())
+		if err != nil {
+			log.Fatal("Error connecting to the target collector: ", err)
 		}
+
+		sent_flow += opts.FlowCount
+		// }
 		// add some periodic spike data
-		if n < 150 {
-			sleepInt := time.Duration(3000)
-			time.Sleep(sleepInt * time.Millisecond)
-		}
-		sleepInt := time.Duration(n)
-		time.Sleep(sleepInt * time.Millisecond)
+		//if n < 150 {
+		//	sleepInt := time.Duration(3000)
+		//	time.Sleep(sleepInt * time.Millisecond)
+		// }
+		// sleepInt := time.Duration(1 * time.Millisecond)
+		// time.Sleep(sleepInt * time.Millisecond)
 	}
 }
 
@@ -104,8 +111,7 @@ func randomNum(min, max int) int {
 }
 
 func showUsage() {
-	var usage string
-	usage = `
+	usage := `
 Usage:
   main [OPTIONS] [collector IP address] [collector port number]
 
